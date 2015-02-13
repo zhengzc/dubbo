@@ -46,6 +46,8 @@ import com.alibaba.dubbo.config.spring.extension.SpringExtensionFactory;
  * 
  * @author william.liangf
  * @export
+ * 
+ * dubbo:service 对应的类
  */
 public class ServiceBean<T> extends ServiceConfig<T> implements InitializingBean, DisposableBean, ApplicationContextAware, ApplicationListener, BeanNameAware {
 
@@ -71,17 +73,22 @@ public class ServiceBean<T> extends ServiceConfig<T> implements InitializingBean
 	    return SPRING_CONTEXT;
 	}
 
+    /**
+     * ApplicationContextAware 接口实现类
+     * 当前对象实例化的时候spring会自动调用此方法
+     */
 	public void setApplicationContext(ApplicationContext applicationContext) {
 		this.applicationContext = applicationContext;
 		SpringExtensionFactory.addApplicationContext(applicationContext);
 		if (applicationContext != null) {
 		    SPRING_CONTEXT = applicationContext;
 		    try {
+		    	//用反射机制将当前对象注册到spring监听中，为什么要用反射机制呢..可能是因为spring不同版本添加监听器的方法不同
 	            Method method = applicationContext.getClass().getMethod("addApplicationListener", new Class<?>[]{ApplicationListener.class}); // 兼容Spring2.0.1
 	            method.invoke(applicationContext, new Object[] {this});
 	            supportedApplicationListener = true;
 	        } catch (Throwable t) {
-                if (applicationContext instanceof AbstractApplicationContext) {
+                if (applicationContext instanceof AbstractApplicationContext) {//设置不成功就换种方式设置监听器
     	            try {
     	                Method method = AbstractApplicationContext.class.getDeclaredMethod("addListener", new Class<?>[]{ApplicationListener.class}); // 兼容Spring2.0.1
                         if (! method.isAccessible()) {
@@ -100,17 +107,27 @@ public class ServiceBean<T> extends ServiceConfig<T> implements InitializingBean
         this.beanName = name;
     }
 
+    /**
+     * 此方法为ApplicationListener接口中的
+     * spring框架会在发生事件的时候调用此方法，观察者模式
+     */
     public void onApplicationEvent(ApplicationEvent event) {
-        if (ContextRefreshedEvent.class.getName().equals(event.getClass().getName())) {
+        if (ContextRefreshedEvent.class.getName().equals(event.getClass().getName())) {//springContext刷新事件
         	if (isDelay() && ! isExported() && ! isUnexported()) {
                 if (logger.isInfoEnabled()) {
                     logger.info("The service ready on spring started. service: " + getInterface());
                 }
+                //这里调用暴漏服务方法！！！
                 export();
             }
         }
     }
     
+    /**
+     * 是否延迟暴漏
+     * 此方法会综合判断，根据配置信息，以及监听设置是否成功
+     * @return
+     */
     private boolean isDelay() {
         Integer delay = getDelay();
         ProviderConfig provider = getProvider();

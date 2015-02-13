@@ -59,6 +59,8 @@ import com.alibaba.dubbo.rpc.Protocol;
  * 
  * @author william.liangf
  * @export
+ * 
+ * dubbo定义的bean解析器，将dubbo命名空间的标签解析为对象，此类包含所有dubbo标签的处理过程
  */
 public class DubboBeanDefinitionParser implements BeanDefinitionParser {
     
@@ -73,42 +75,60 @@ public class DubboBeanDefinitionParser implements BeanDefinitionParser {
         this.required = required;
     }
 
+    /**
+     * spring提供的bean解析接口默认调用方法
+     */
     public BeanDefinition parse(Element element, ParserContext parserContext) {
         return parse(element, parserContext, beanClass, required);
     }
     
     @SuppressWarnings("unchecked")
     private static BeanDefinition parse(Element element, ParserContext parserContext, Class<?> beanClass, boolean required) {
+    	/**
+    	 * 开始构建对象
+    	 */
         RootBeanDefinition beanDefinition = new RootBeanDefinition();
-        beanDefinition.setBeanClass(beanClass);
-        beanDefinition.setLazyInit(false);
-        String id = element.getAttribute("id");
-        if ((id == null || id.length() == 0) && required) {
+        beanDefinition.setBeanClass(beanClass);//设置类
+        beanDefinition.setLazyInit(false);//不允许懒加载
+        
+        /**
+         * 处理id属性并注册当前对象到beanfactory
+         */
+        String id = element.getAttribute("id");//获取id属性
+        if ((id == null || id.length() == 0) && required) {//当id为空且为必须 根据不同的对象按照不同规则生成一个id
+        	//一般设置name属性名为id
         	String generatedBeanName = element.getAttribute("name");
-        	if (generatedBeanName == null || generatedBeanName.length() == 0) {
-        	    if (ProtocolConfig.class.equals(beanClass)) {
+        	if (generatedBeanName == null || generatedBeanName.length() == 0) {//如果name也是没有设置
+        	    if (ProtocolConfig.class.equals(beanClass)) {//如果为protocol标签的话，直接指定一个
         	        generatedBeanName = "dubbo";
-        	    } else {
+        	    } else {//使用interface属性做为id
         	        generatedBeanName = element.getAttribute("interface");
         	    }
         	}
-        	if (generatedBeanName == null || generatedBeanName.length() == 0) {
+        	if (generatedBeanName == null || generatedBeanName.length() == 0) {//仍然获取不到....那就使用class的name做为id喽
         		generatedBeanName = beanClass.getName();
         	}
             id = generatedBeanName; 
+            
+            //判断一下spring中是否已经存在重名的id，如果存在就加上后缀数字递增到没有重名的为止喽
             int counter = 2;
             while(parserContext.getRegistry().containsBeanDefinition(id)) {
                 id = generatedBeanName + (counter ++);
             }
         }
-        if (id != null && id.length() > 0) {
-            if (parserContext.getRegistry().containsBeanDefinition(id))  {
+        if (id != null && id.length() > 0) {//添加id属性
+            if (parserContext.getRegistry().containsBeanDefinition(id))  {//再判断一次重复
         		throw new IllegalStateException("Duplicate spring bean id " + id);
         	}
-            parserContext.getRegistry().registerBeanDefinition(id, beanDefinition);
-            beanDefinition.getPropertyValues().addPropertyValue("id", id);
+            parserContext.getRegistry().registerBeanDefinition(id, beanDefinition);//注册进入beanfactory
+            beanDefinition.getPropertyValues().addPropertyValue("id", id);//为这个对象增加id属性
         }
+        
+        /**
+         * protocol标签处理
+         */
         if (ProtocolConfig.class.equals(beanClass)) {
+        	//所有待实例化的类，如果存在protocol属性，且id相同（相同协议），则直接将已有protocol对象设置进去(手动注入喽...)
             for (String name : parserContext.getRegistry().getBeanDefinitionNames()) {
                 BeanDefinition definition = parserContext.getRegistry().getBeanDefinition(name);
                 PropertyValue property = definition.getPropertyValues().getPropertyValue("protocol");
@@ -119,20 +139,39 @@ public class DubboBeanDefinitionParser implements BeanDefinitionParser {
                     }
                 }
             }
+        
+        /**
+         * service标签处理
+         */
         } else if (ServiceBean.class.equals(beanClass)) {
             String className = element.getAttribute("class");
-            if(className != null && className.length() > 0) {
+            if(className != null && className.length() > 0) {//class属性存在 实例化对象
+            	//实例化一个service对象出来
                 RootBeanDefinition classDefinition = new RootBeanDefinition();
                 classDefinition.setBeanClass(ReflectUtils.forName(className));
                 classDefinition.setLazyInit(false);
-                parseProperties(element.getChildNodes(), classDefinition);
+                parseProperties(element.getChildNodes(), classDefinition);//处理子标签
+                
+                //将这个service设置为当前对象的ref属性
                 beanDefinition.getPropertyValues().addPropertyValue("ref", new BeanDefinitionHolder(classDefinition, id + "Impl"));
             }
+            
+        /**
+         * provider标签处理
+         */
         } else if (ProviderConfig.class.equals(beanClass)) {
-            parseNested(element, parserContext, ServiceBean.class, true, "service", "provider", id, beanDefinition);
+            parseNested(element, parserContext, ServiceBean.class, true, "service", "provider", id, beanDefinition);//循环处理子标签?
+            
+        /**
+         * consumer标签处理
+         */
         } else if (ConsumerConfig.class.equals(beanClass)) {
-            parseNested(element, parserContext, ReferenceBean.class, false, "reference", "consumer", id, beanDefinition);
+            parseNested(element, parserContext, ReferenceBean.class, false, "reference", "consumer", id, beanDefinition);////循环处理子标签?
         }
+        
+        /**
+         * 以下是处理 set get方法？ 
+         */
         Set<String> props = new HashSet<String>();
         ManagedMap parameters = null;
         for (Method setter : beanClass.getMethods()) {
@@ -329,6 +368,11 @@ public class DubboBeanDefinitionParser implements BeanDefinitionParser {
         }
     }
 
+    /**
+     * 解析标签子元素
+     * @param nodeList
+     * @param beanDefinition
+     */
     private static void parseProperties(NodeList nodeList, RootBeanDefinition beanDefinition) {
         if (nodeList != null && nodeList.getLength() > 0) {
             for (int i = 0; i < nodeList.getLength(); i++) {

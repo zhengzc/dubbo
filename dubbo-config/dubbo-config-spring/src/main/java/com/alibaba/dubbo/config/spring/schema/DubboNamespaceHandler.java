@@ -34,14 +34,21 @@ import com.alibaba.dubbo.config.spring.ServiceBean;
  * 
  * @author william.liangf
  * @export
+ * 
+ * 使用spring标签，dubbo命名空间的时候，对各个标签的解析是从这里开始的
  */
 public class DubboNamespaceHandler extends NamespaceHandlerSupport {
 
 	static {
+		//防御性容错，检查版本来保证没有重复引入jar
 		Version.checkDuplicate(DubboNamespaceHandler.class);
 	}
-
+	
+	/**
+	 * spring启动的时候会自动调用此方法，提供自定义标签的入口方法
+	 */
 	public void init() {
+		//为不同的元素注册解析器
 	    registerBeanDefinitionParser("application", new DubboBeanDefinitionParser(ApplicationConfig.class, true));
         registerBeanDefinitionParser("module", new DubboBeanDefinitionParser(ModuleConfig.class, true));
         registerBeanDefinitionParser("registry", new DubboBeanDefinitionParser(RegistryConfig.class, true));

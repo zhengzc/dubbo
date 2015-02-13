@@ -115,8 +115,11 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
 		return unexported;
 	}
 
+    /**
+     * 此方法就是发布服务的入口
+     */
     public synchronized void export() {
-        if (provider != null) {
+        if (provider != null) {//适配provider上面的属性 export delay
             if (export == null) {
                 export = provider.getExport();
             }
@@ -124,40 +127,43 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
                 delay = provider.getDelay();
             }
         }
-        if (export != null && ! export.booleanValue()) {
+        if (export != null && ! export.booleanValue()) {//此服务如果已经发布过，donothing
             return;
         }
-        if (delay != null && delay > 0) {
+        if (delay != null && delay > 0) {//延迟发布服务的话，就直接启动线程，让其休眠delay毫秒后发布服务
             Thread thread = new Thread(new Runnable() {
                 public void run() {
                     try {
                         Thread.sleep(delay);
                     } catch (Throwable e) {
                     }
-                    doExport();
+                    doExport();//发布服务
                 }
             });
-            thread.setDaemon(true);
+            thread.setDaemon(true);//将线程设置为后台线程，防止被kill掉
             thread.setName("DelayExportServiceThread");
             thread.start();
-        } else {
+        } else {//不设置的时候，直接调用，spring完成初始化的时候，服务就会发布
             doExport();
         }
     }
     
+    /**
+     * 
+     */
     protected synchronized void doExport() {
-        if (unexported) {
+        if (unexported) {//卸载？禁止发布？
             throw new IllegalStateException("Already unexported!");
         }
-        if (exported) {
+        if (exported) {//已经发布过
             return;
         }
-        exported = true;
-        if (interfaceName == null || interfaceName.length() == 0) {
+        exported = true;//设置为已发布
+        if (interfaceName == null || interfaceName.length() == 0) {//接口名称必须有
             throw new IllegalStateException("<dubbo:service interface=\"\" /> interface not allow null!");
         }
-        checkDefault();
-        if (provider != null) {
+        checkDefault();//检查provider对象
+        if (provider != null) {//将provider对象属性适配到service对象
             if (application == null) {
                 application = provider.getApplication();
             }
@@ -174,7 +180,7 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
                 protocols = provider.getProtocols();
             }
         }
-        if (module != null) {
+        if (module != null) {//将module对象属性适配到service对象
             if (registries == null) {
                 registries = module.getRegistries();
             }
@@ -182,7 +188,7 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
                 monitor = module.getMonitor();
             }
         }
-        if (application != null) {
+        if (application != null) {//将application对象属性适配到service对象
             if (registries == null) {
                 registries = application.getRegistries();
             }
@@ -190,22 +196,26 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
                 monitor = application.getMonitor();
             }
         }
-        if (ref instanceof GenericService) {
+        
+        //处理interfaceClass属性
+        if (ref instanceof GenericService) {//泛化接口,通用接口，主要用没有api接口以及模型类原的情况
             interfaceClass = GenericService.class;
             if (StringUtils.isEmpty(generic)) {
-                generic = Boolean.TRUE.toString();
+                generic = Boolean.TRUE.toString();//设置为泛化接口
             }
-        } else {
+        } else {//普通接口
             try {
                 interfaceClass = Class.forName(interfaceName, true, Thread.currentThread()
                         .getContextClassLoader());
             } catch (ClassNotFoundException e) {
                 throw new IllegalStateException(e.getMessage(), e);
             }
-            checkInterfaceAndMethods(interfaceClass, methods);
-            checkRef();
-            generic = Boolean.FALSE.toString();
+            checkInterfaceAndMethods(interfaceClass, methods);//检查接口和方法是否匹配
+            checkRef();//检查引用和实现的匹配等
+            generic = Boolean.FALSE.toString();//设置为非泛化接口
         }
+        
+        //接口的本地实现类名称！！！
         if(local !=null){
             if(local=="true"){
                 local=interfaceName+"Local";
@@ -220,6 +230,8 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
                 throw new IllegalStateException("The local implemention class " + localClass.getName() + " not implement interface " + interfaceName);
             }
         }
+        
+        //接口的缺省代理类名 接口名+Local后缀
         if(stub !=null){
             if(stub=="true"){
                 stub=interfaceName+"Stub";
@@ -234,15 +246,16 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
                 throw new IllegalStateException("The stub implemention class " + stubClass.getName() + " not implement interface " + interfaceName);
             }
         }
-        checkApplication();
-        checkRegistry();
-        checkProtocol();
-        appendProperties(this);
-        checkStubAndMock(interfaceClass);
+        
+        checkApplication();//检查application配置
+        checkRegistry();//检测注册中心配置
+        checkProtocol();//检测protocol配置
+        appendProperties(this);//为当前对象补全属性
+        checkStubAndMock(interfaceClass);//检查本地代理等？
         if (path == null || path.length() == 0) {
             path = interfaceName;
         }
-        doExportUrls();
+        doExportUrls();//执行发布
     }
 
     private void checkRef() {
@@ -279,24 +292,32 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
     
     @SuppressWarnings({ "unchecked", "rawtypes" })
     private void doExportUrls() {
-        List<URL> registryURLs = loadRegistries(true);
-        for (ProtocolConfig protocolConfig : protocols) {
+        List<URL> registryURLs = loadRegistries(true);//获取注册中心列表？
+        for (ProtocolConfig protocolConfig : protocols) {//遍历所有协议配置？
             doExportUrlsFor1Protocol(protocolConfig, registryURLs);
         }
     }
 
+    /**
+     * 真正的发布服务的方法
+     * @param protocolConfig protocol配置 
+     * @param registryURLs 注册中心的url列表
+     */
     private void doExportUrlsFor1Protocol(ProtocolConfig protocolConfig, List<URL> registryURLs) {
+    	
+    	//协议名字，空的话就默认用dubbo喽
         String name = protocolConfig.getName();
         if (name == null || name.length() == 0) {
             name = "dubbo";
         }
 
+        //host
         String host = protocolConfig.getHost();
         if (provider != null && (host == null || host.length() == 0)) {
             host = provider.getHost();
         }
         boolean anyhost = false;
-        if (NetUtils.isInvalidLocalHost(host)) {
+        if (NetUtils.isInvalidLocalHost(host)) {//本地host？
             anyhost = true;
             try {
                 host = InetAddress.getLocalHost().getHostAddress();
@@ -306,7 +327,7 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
             if (NetUtils.isInvalidLocalHost(host)) {
                 if (registryURLs != null && registryURLs.size() > 0) {
                     for (URL registryURL : registryURLs) {
-                        try {
+                        try {//这是先检测一下端口是否可用？
                             Socket socket = new Socket();
                             try {
                                 SocketAddress addr = new InetSocketAddress(registryURL.getHost(), registryURL.getPort());
@@ -329,6 +350,7 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
             }
         }
 
+        //端口号
         Integer port = protocolConfig.getPort();
         if (provider != null && (port == null || port == 0)) {
             port = provider.getPort();
@@ -340,12 +362,14 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
         if (port == null || port <= 0) {
             port = getRandomPort(name);
             if (port == null || port < 0) {
-                port = NetUtils.getAvailablePort(defaultPort);
+                port = NetUtils.getAvailablePort(defaultPort);//检测可用端口号，并返回一个
                 putRandomPort(name, port);
             }
             logger.warn("Use random available port(" + port + ") for protocol " + name);
         }
 
+        
+        //构建总线url其他参数
         Map<String, String> map = new HashMap<String, String>();
         if (anyhost) {
             map.put(Constants.ANYHOST_KEY, "true");
@@ -446,6 +470,8 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
             protocolConfig.setRegister(false);
             map.put("notify", "false");
         }
+        
+        
         // 导出服务
         String contextPath = protocolConfig.getContextpath();
         if ((contextPath == null || contextPath.length() == 0) && provider != null) {
@@ -453,7 +479,7 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
         }
         URL url = new URL(name, host, port, (contextPath == null || contextPath.length() == 0 ? "" : contextPath + "/") + path, map);
 
-        if (ExtensionLoader.getExtensionLoader(ConfiguratorFactory.class)
+        if (ExtensionLoader.getExtensionLoader(ConfiguratorFactory.class)//当前protocol存在的时候，将url配置进去?
                 .hasExtension(url.getProtocol())) {
             url = ExtensionLoader.getExtensionLoader(ConfiguratorFactory.class)
                     .getExtension(url.getProtocol()).getConfigurator(url).configure(url);
@@ -474,7 +500,7 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
                 }
                 if (registryURLs != null && registryURLs.size() > 0
                         && url.getParameter("register", true)) {
-                    for (URL registryURL : registryURLs) {
+                    for (URL registryURL : registryURLs) {//多注册中心注册
                         url = url.addParameterIfAbsent("dynamic", registryURL.getParameter("dynamic"));
                         URL monitorUrl = loadMonitor(registryURL);
                         if (monitorUrl != null) {
@@ -483,10 +509,12 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
                         if (logger.isInfoEnabled()) {
                             logger.info("Register dubbo service " + interfaceClass.getName() + " url " + url + " to registry " + registryURL);
                         }
+                        
+                        //获取invoker
                         Invoker<?> invoker = proxyFactory.getInvoker(ref, (Class) interfaceClass, registryURL.addParameterAndEncoded(Constants.EXPORT_KEY, url.toFullString()));
 
-                        Exporter<?> exporter = protocol.export(invoker);
-                        exporters.add(exporter);
+                        Exporter<?> exporter = protocol.export(invoker);//调用protocol真正的export方法
+                        exporters.add(exporter);//缓存一下
                     }
                 } else {
                     Invoker<?> invoker = proxyFactory.getInvoker(ref, (Class) interfaceClass, url);
@@ -514,6 +542,9 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
         }
     }
 
+    /**
+     * 用来获取默认的provider对象，并且为此对象设置属性
+     */
     private void checkDefault() {
         if (provider == null) {
             provider = new ProviderConfig();
