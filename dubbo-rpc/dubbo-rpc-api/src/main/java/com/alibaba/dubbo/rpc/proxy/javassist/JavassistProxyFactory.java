@@ -27,6 +27,9 @@ import com.alibaba.dubbo.rpc.proxy.InvokerInvocationHandler;
  * JavaassistRpcProxyFactory 
 
  * @author william.liangf
+ * 
+ * dubbo默认使用的动态代理方式
+ * javaassist实现
  */
 public class JavassistProxyFactory extends AbstractProxyFactory {
 
@@ -37,6 +40,7 @@ public class JavassistProxyFactory extends AbstractProxyFactory {
 
     public <T> Invoker<T> getInvoker(T proxy, Class<T> type, URL url) {
         // TODO Wrapper类不能正确处理带$的类名
+    	//可以认为是proxy的实例，这个方法将会创建service实例并添加方法和属性等
         final Wrapper wrapper = Wrapper.getWrapper(proxy.getClass().getName().indexOf('$') < 0 ? proxy.getClass() : type);
         return new AbstractProxyInvoker<T>(proxy, type, url) {
             @Override

@@ -55,6 +55,7 @@ import com.alibaba.dubbo.rpc.protocol.AbstractProtocol;
  * @author qian.lei
  * @author william.liangf
  * @author chao.liuc
+ * 默认使用的通讯协议...
  */
 public class DubboProtocol extends AbstractProtocol {
 
@@ -227,15 +228,18 @@ public class DubboProtocol extends AbstractProtocol {
         return DEFAULT_PORT;
     }
 
+    /**
+     * 导出服务的主要方法喽
+     */
     public <T> Exporter<T> export(Invoker<T> invoker) throws RpcException {
         URL url = invoker.getUrl();
         
-        // export service.
+        // export service. 构建export对象 这里是dubboExporter
         String key = serviceKey(url);
         DubboExporter<T> exporter = new DubboExporter<T>(invoker, key, exporterMap);
         exporterMap.put(key, exporter);
         
-        //export an stub service for dispaching event
+        //export an stub service for dispaching event 暴漏一个远程服务
         Boolean isStubSupportEvent = url.getParameter(Constants.STUB_EVENT_KEY,Constants.DEFAULT_STUB_EVENT);
         Boolean isCallbackservice = url.getParameter(Constants.IS_CALLBACK_SERVICE, false);
         if (isStubSupportEvent && !isCallbackservice){

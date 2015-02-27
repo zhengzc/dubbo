@@ -74,6 +74,8 @@ public abstract class Wrapper
 	 * 
 	 * @param c Class instance.
 	 * @return Wrapper instance(not null).
+	 * 
+	 * 获取某个类的实例，并且为这个实例包装一下，添加方法和属性
 	 */
 	public static Wrapper getWrapper(Class<?> c)
     {
@@ -201,18 +203,26 @@ public abstract class Wrapper
 	 */
 	abstract public Object invokeMethod(Object instance, String mn, Class<?>[] types, Object[] args) throws NoSuchMethodException, InvocationTargetException;
 
+	/**
+	 * 重要
+	 * 根据 class生成 wrapper，为这个对象添加方法和属性
+	 * @param c
+	 * @return
+	 */
 	private static Wrapper makeWrapper(Class<?> c)
 	{
-		if( c.isPrimitive() )
+		if( c.isPrimitive() )//基本类型不行
 			throw new IllegalArgumentException("Can not create wrapper for primitive type: " + c);
 
-		String name = c.getName();
-		ClassLoader cl = ClassHelper.getClassLoader(c);
+		String name = c.getName();//获取接口名字
+		ClassLoader cl = ClassHelper.getClassLoader(c);//获取类加载器
 
 		StringBuilder c1 = new StringBuilder("public void setPropertyValue(Object o, String n, Object v){ ");
 		StringBuilder c2 = new StringBuilder("public Object getPropertyValue(Object o, String n){ ");
+		//这就是动态生成的最重要的方法！！！
 		StringBuilder c3 = new StringBuilder("public Object invokeMethod(Object o, String n, Class[] p, Object[] v) throws " + InvocationTargetException.class.getName() + "{ ");
 
+		//以下是构造方法体
 		c1.append(name).append(" w; try{ w = ((").append(name).append(")$1); }catch(Throwable e){ throw new IllegalArgumentException(e); }");
 		c2.append(name).append(" w; try{ w = ((").append(name).append(")$1); }catch(Throwable e){ throw new IllegalArgumentException(e); }");
 		c3.append(name).append(" w; try{ w = ((").append(name).append(")$1); }catch(Throwable e){ throw new IllegalArgumentException(e); }");
@@ -318,20 +328,20 @@ public abstract class Wrapper
 		c1.append(" throw new " + NoSuchPropertyException.class.getName() + "(\"Not found property \\\"\"+$2+\"\\\" filed or setter method in class " + c.getName() + ".\"); }");
 		c2.append(" throw new " + NoSuchPropertyException.class.getName() + "(\"Not found property \\\"\"+$2+\"\\\" filed or setter method in class " + c.getName() + ".\"); }");
 
-		// make class
+		// make class 动态生成类
 		long id = WRAPPER_CLASS_COUNTER.getAndIncrement();
-		ClassGenerator cc = ClassGenerator.newInstance(cl);
-		cc.setClassName( ( Modifier.isPublic(c.getModifiers()) ? Wrapper.class.getName() : c.getName() + "$sw" ) + id );
-		cc.setSuperClass(Wrapper.class);
+		ClassGenerator cc = ClassGenerator.newInstance(cl);//构建类原型
+		cc.setClassName( ( Modifier.isPublic(c.getModifiers()) ? Wrapper.class.getName() : c.getName() + "$sw" ) + id );//设置类名
+		cc.setSuperClass(Wrapper.class);//父类
 
-		cc.addDefaultConstructor();
+		cc.addDefaultConstructor();//默认构造方法
 		cc.addField("public static String[] pns;"); // property name array.
 		cc.addField("public static " + Map.class.getName() + " pts;"); // property type map.
 		cc.addField("public static String[] mns;"); // all method name array.
 		cc.addField("public static String[] dmns;"); // declared method name array.
 		for(int i=0,len=ms.size();i<len;i++)
 			cc.addField("public static Class[] mts" + i + ";");
-
+		//添加方法
 		cc.addMethod("public String[] getPropertyNames(){ return pns; }");
 		cc.addMethod("public boolean hasProperty(String n){ return pts.containsKey($1); }");
 		cc.addMethod("public Class getPropertyType(String n){ return (Class)pts.get($1); }");
@@ -343,7 +353,7 @@ public abstract class Wrapper
 
 		try
 		{
-			Class<?> wc = cc.toClass();
+			Class<?> wc = cc.toClass();//生成类
 			// setup static field.
 			wc.getField("pts").set(null, pts);
 			wc.getField("pns").set(null, pts.keySet().toArray(new String[0]));
@@ -352,7 +362,7 @@ public abstract class Wrapper
 			int ix = 0;
 			for( Method m : ms.values() )
 				wc.getField("mts" + ix++).set(null, m.getParameterTypes());
-			return (Wrapper)wc.newInstance();
+			return (Wrapper)wc.newInstance();//创建类实例并返回
 		}
 		catch(RuntimeException e)
 		{

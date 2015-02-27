@@ -25,6 +25,8 @@ import java.util.Map;
  * @see com.alibaba.dubbo.rpc.RpcResult
  * @author qianlei
  * @author william.liangf
+ * 
+ * 主要rpc调用返回实例的接口，此类分装了调用返回结果的类型，添加了异常等相关信息
  */
 public interface Result {
 

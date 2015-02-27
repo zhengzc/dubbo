@@ -28,6 +28,8 @@ import com.alibaba.dubbo.rpc.RpcResult;
  * InvokerWrapper
  * 
  * @author william.liangf
+ * 
+ * Invoker接口的一个主要实现
  */
 public abstract class AbstractProxyInvoker<T> implements Invoker<T> {
     
@@ -44,7 +46,7 @@ public abstract class AbstractProxyInvoker<T> implements Invoker<T> {
         if (type == null) {
             throw new IllegalArgumentException("interface == null");
         }
-        if (! type.isInstance(proxy)) {
+        if (! type.isInstance(proxy)) {//判断一下实例是否是接口的实现，是否吻合，动态代理的时候要用到
             throw new IllegalArgumentException(proxy.getClass().getName() + " not implement interface " + type);
         }
         this.proxy = proxy;
@@ -77,6 +79,15 @@ public abstract class AbstractProxyInvoker<T> implements Invoker<T> {
         }
     }
     
+    /**
+     * 子类实现
+     * @param proxy
+     * @param methodName
+     * @param parameterTypes
+     * @param arguments
+     * @return
+     * @throws Throwable
+     */
     protected abstract Object doInvoke(T proxy, String methodName, Class<?>[] parameterTypes, Object[] arguments) throws Throwable;
 
     @Override

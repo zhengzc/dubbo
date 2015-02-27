@@ -24,12 +24,14 @@ import com.alibaba.dubbo.common.Node;
  * @see com.alibaba.dubbo.rpc.InvokerListener
  * @see com.alibaba.dubbo.rpc.protocol.AbstractInvoker
  * @author william.liangf
+ * 
+ * 此接口是rpc的一个核心接口，客户端和服务端主要通过此接口完成service转化
  */
 public interface Invoker<T> extends Node {
 
     /**
      * get service interface.
-     * 
+     * 获取服务接口
      * @return service interface.
      */
     Class<T> getInterface();
@@ -40,6 +42,8 @@ public interface Invoker<T> extends Node {
      * @param invocation
      * @return result
      * @throws RpcException
+     * 
+     * 
      */
     Result invoke(Invocation invocation) throws RpcException;
 

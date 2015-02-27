@@ -512,13 +512,14 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
                         
                         //获取invoker
                         Invoker<?> invoker = proxyFactory.getInvoker(ref, (Class) interfaceClass, registryURL.addParameterAndEncoded(Constants.EXPORT_KEY, url.toFullString()));
-
+                        //导出服务
                         Exporter<?> exporter = protocol.export(invoker);//调用protocol真正的export方法
                         exporters.add(exporter);//缓存一下
                     }
                 } else {
+                	//获取invoker
                     Invoker<?> invoker = proxyFactory.getInvoker(ref, (Class) interfaceClass, url);
-
+                    //导出服务
                     Exporter<?> exporter = protocol.export(invoker);
                     exporters.add(exporter);
                 }
