@@ -37,6 +37,7 @@ import com.alibaba.dubbo.remoting.transport.dispatcher.WrappedChannelHandler;
  * 
  * @author qian.lei
  * @author ding.lid
+ * 不同通讯协议实现的抽象父类，处理参数，将url解析为响应的必须参数
  */
 public abstract class AbstractServer extends AbstractEndpoint implements Server {
     

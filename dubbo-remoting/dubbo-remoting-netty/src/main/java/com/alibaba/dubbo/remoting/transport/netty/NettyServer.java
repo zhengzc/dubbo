@@ -66,11 +66,15 @@ public class NettyServer extends AbstractServer implements Server {
     @Override
     protected void doOpen() throws Throwable {
         NettyHelper.setNettyLoggerFactory();
+        //两个线程池
         ExecutorService boss = Executors.newCachedThreadPool(new NamedThreadFactory("NettyServerBoss", true));
         ExecutorService worker = Executors.newCachedThreadPool(new NamedThreadFactory("NettyServerWorker", true));
+        //niosocket channel
         ChannelFactory channelFactory = new NioServerSocketChannelFactory(boss, worker, getUrl().getPositiveParameter(Constants.IO_THREADS_KEY, Constants.DEFAULT_IO_THREADS));
+        
         bootstrap = new ServerBootstrap(channelFactory);
         
+        //创建一个handler
         final NettyHandler nettyHandler = new NettyHandler(getUrl(), this);
         channels = nettyHandler.getChannels();
         // https://issues.jboss.org/browse/NETTY-365
@@ -78,6 +82,7 @@ public class NettyServer extends AbstractServer implements Server {
         // final Timer timer = new HashedWheelTimer(new NamedThreadFactory("NettyIdleTimer", true));
         bootstrap.setPipelineFactory(new ChannelPipelineFactory() {
             public ChannelPipeline getPipeline() {
+            	//序列化和反序列化工具类？
                 NettyCodecAdapter adapter = new NettyCodecAdapter(getCodec() ,getUrl(), NettyServer.this);
                 ChannelPipeline pipeline = Channels.pipeline();
                 /*int idleTimeout = getIdleTimeout();

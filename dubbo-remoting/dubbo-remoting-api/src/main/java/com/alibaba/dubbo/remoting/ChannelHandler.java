@@ -25,6 +25,7 @@ import com.alibaba.dubbo.common.extension.SPI;
  * @see com.alibaba.dubbo.remoting.Transporter#connect(com.alibaba.dubbo.common.URL, ChannelHandler)
  * @author qian.lei
  * @author william.liangf
+ * 通道操作接口，当然这里指的是远程通信相关的喽
  */
 @SPI
 public interface ChannelHandler {

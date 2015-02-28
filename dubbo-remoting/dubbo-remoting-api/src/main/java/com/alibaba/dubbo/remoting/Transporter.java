@@ -31,12 +31,18 @@ import com.alibaba.dubbo.common.extension.SPI;
  * @see com.alibaba.dubbo.remoting.Transporters
  * @author ding.lid
  * @author william.liangf
+ * 底层的传输接口，可以使用不同的方式实现！
+ * 此接口主要提供服务端绑定，客户端连接等主要方法
+ * 
+ * url作为dubbo里面的主要传输配置，里面记录了方法调用相关的一切信息和参数，包括ip 端口 调用接口 方法 参数等
+ * ChannelHandler可以认为是一个通道操作的对象，里面包含了创建连接，断开连接，发送，接受，获取异常等一系列方法！
  */
 @SPI("netty")
 public interface Transporter {
 
     /**
      * Bind a server.
+     * 服务端调用，绑定一个服务
      * 
      * @see com.alibaba.dubbo.remoting.Transporters#bind(URL, Receiver, ChannelHandler)
      * @param url server url
@@ -49,6 +55,7 @@ public interface Transporter {
 
     /**
      * Connect to a server.
+     * 客户端调用，连接一个服务
      * 
      * @see com.alibaba.dubbo.remoting.Transporters#connect(URL, Receiver, ChannelListener)
      * @param url server url

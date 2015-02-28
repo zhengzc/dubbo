@@ -25,6 +25,9 @@ import java.net.InetSocketAddress;
  * @see com.alibaba.dubbo.remoting.Server#getChannel(InetSocketAddress)
  * @author qian.lei
  * @author william.liangf
+ * 
+ * dubbo分装的通道... 可以认为这是传输层的各种不同协议统一抽象出来的传输通道（一般是socket连接喽）
+ * 当然，这里面包含了相关的方法
  */
 public interface Channel extends Endpoint {
 
