@@ -28,6 +28,7 @@ import com.alibaba.dubbo.remoting.transport.DecodeHandler;
  * DefaultMessenger
  * 
  * @author william.liangf
+ * dubbo默认的Exchager实现
  */
 public class HeaderExchanger implements Exchanger {
     

@@ -43,6 +43,9 @@ import com.alibaba.dubbo.remoting.exchange.support.DefaultFuture;
  * ExchangeServerImpl
  * 
  * @author william.liangf
+ * 
+ * dubbo默认的信息交换扩展
+ * 此类配合HeaderExchangeChannel HeartbeatHandler等实现了消息的进步封装(添加了版本号等)和心跳探测
  */
 public class HeaderExchangeServer implements ExchangeServer {
     
@@ -70,14 +73,18 @@ public class HeaderExchangeServer implements ExchangeServer {
             throw new IllegalArgumentException("server == null");
         }
         this.server = server;
-        this.heartbeat = server.getUrl().getParameter(Constants.HEARTBEAT_KEY, 0);
-        this.heartbeatTimeout = server.getUrl().getParameter(Constants.HEARTBEAT_TIMEOUT_KEY, heartbeat * 3);
+        this.heartbeat = server.getUrl().getParameter(Constants.HEARTBEAT_KEY, 0);//设置心跳
+        this.heartbeatTimeout = server.getUrl().getParameter(Constants.HEARTBEAT_TIMEOUT_KEY, heartbeat * 3);//设置心跳超时时间 默认为3次心跳时间
         if (heartbeatTimeout < heartbeat * 2) {
             throw new IllegalStateException("heartbeatTimeout < heartbeatInterval * 2");
         }
-        startHeatbeatTimer();
+        startHeatbeatTimer();//开启心跳检测
     }
     
+    /**
+     * 获取server
+     * @return
+     */
     public Server getServer() {
         return server;
     }
@@ -121,6 +128,9 @@ public class HeaderExchangeServer implements ExchangeServer {
         server.close(timeout);
     }
     
+    /**
+     * 向channel发送只读事件
+     */
     private void sendChannelReadOnlyEvent(){
         Request request = new Request();
         request.setEvent(Request.READONLY_EVENT);
@@ -231,6 +241,9 @@ public class HeaderExchangeServer implements ExchangeServer {
         server.send(message, sent);
     }
 
+    /**
+     * 开启心跳检测
+     */
     private void startHeatbeatTimer() {
         stopHeartbeatTimer();
         if (heartbeat > 0) {
@@ -245,6 +258,9 @@ public class HeaderExchangeServer implements ExchangeServer {
         }
     }
 
+    /**
+     * 停止心跳检测
+     */
     private void stopHeartbeatTimer() {
         try {
             ScheduledFuture<?> timer = heatbeatTimer;

@@ -234,7 +234,8 @@ public class DubboProtocol extends AbstractProtocol {
     public <T> Exporter<T> export(Invoker<T> invoker) throws RpcException {
         URL url = invoker.getUrl();
         
-        // export service. 构建export对象 这里是dubboExporter
+        // export service. 构建export对象 这里是dubboExporter 
+        // exporter都被缓存在exporterMap中，并且每个exporter实现中还存有exporterMap的引用
         String key = serviceKey(url);
         DubboExporter<T> exporter = new DubboExporter<T>(invoker, key, exporterMap);
         exporterMap.put(key, exporter);
@@ -265,6 +266,7 @@ public class DubboProtocol extends AbstractProtocol {
         //client 也可以暴露一个只有server可以调用的服务。
         boolean isServer = url.getParameter(Constants.IS_SERVER_KEY,true);
         if (isServer) {
+        	//获取一个ExchangeServier，暴漏服务，并缓存起来
         	ExchangeServer server = serverMap.get(key);
         	if (server == null) {
         		serverMap.put(key, createServer(url));
@@ -280,18 +282,21 @@ public class DubboProtocol extends AbstractProtocol {
         url = url.addParameterIfAbsent(Constants.CHANNEL_READONLYEVENT_SENT_KEY, Boolean.TRUE.toString());
         //默认开启heartbeat
         url = url.addParameterIfAbsent(Constants.HEARTBEAT_KEY, String.valueOf(Constants.DEFAULT_HEARTBEAT));
+        //获取server类型 默认是netty
         String str = url.getParameter(Constants.SERVER_KEY, Constants.DEFAULT_REMOTING_SERVER);
-
+        //判断是否存在相应的server类型扩展
         if (str != null && str.length() > 0 && ! ExtensionLoader.getExtensionLoader(Transporter.class).hasExtension(str))
             throw new RpcException("Unsupported server type: " + str + ", url: " + url);
-
+        //设置序列化类型 默认就是duboo的序列化喽
         url = url.addParameter(Constants.CODEC_KEY, Version.isCompatibleVersion() ? COMPATIBLE_CODEC_NAME : DubboCodec.NAME);
         ExchangeServer server;
         try {
+        	//获取server 此方法会根据url上面的表示获取到对应的ExchangeServer 默认的是header
             server = Exchangers.bind(url, requestHandler);
         } catch (RemotingException e) {
             throw new RpcException("Fail to start server(url: " + url + ") " + e.getMessage(), e);
         }
+        //协议客户端实现类型
         str = url.getParameter(Constants.CLIENT_KEY);
         if (str != null && str.length() > 0) {
             Set<String> supportedTypes = ExtensionLoader.getExtensionLoader(Transporter.class).getSupportedExtensions();

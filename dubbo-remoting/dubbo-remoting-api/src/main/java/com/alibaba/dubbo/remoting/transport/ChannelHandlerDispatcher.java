@@ -28,6 +28,8 @@ import com.alibaba.dubbo.remoting.ChannelHandler;
  * ChannelListenerDispatcher
  * 
  * @author william.liangf
+ * 
+ * 将多个handler聚合成一个handler，分发请求
  */
 public class ChannelHandlerDispatcher implements ChannelHandler {
 

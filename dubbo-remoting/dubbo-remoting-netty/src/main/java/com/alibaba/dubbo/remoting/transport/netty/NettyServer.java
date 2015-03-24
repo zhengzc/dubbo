@@ -48,6 +48,8 @@ import com.alibaba.dubbo.remoting.transport.dispatcher.ChannelHandlers;
  * 
  * @author qian.lei
  * @author chao.liuc
+ * 
+ * dubbo的默认实现
  */
 public class NettyServer extends AbstractServer implements Server {
     

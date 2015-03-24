@@ -25,6 +25,8 @@ import com.alibaba.dubbo.remoting.transport.ChannelHandlerDispatcher;
  * Transporter facade. (API, Static, ThreadSafe)
  * 
  * @author william.liangf
+ * 
+ * Transporters的帮助类
  */
 public class Transporters {
 
@@ -32,6 +34,13 @@ public class Transporters {
         return bind(URL.valueOf(url), handler);
     }
 
+    /**
+     * 根据url信息和ChannelHandler创建一个Server
+     * @param url
+     * @param handlers
+     * @return
+     * @throws RemotingException
+     */
     public static Server bind(URL url, ChannelHandler... handlers) throws RemotingException {
         if (url == null) {
             throw new IllegalArgumentException("url == null");
@@ -43,9 +52,9 @@ public class Transporters {
         if (handlers.length == 1) {
             handler = handlers[0];
         } else {
-            handler = new ChannelHandlerDispatcher(handlers);
+            handler = new ChannelHandlerDispatcher(handlers);//这里通过dispatcher又将多个Handler伪装为一个Handler
         }
-        return getTransporter().bind(url, handler);
+        return getTransporter().bind(url, handler);//spi获取Transporter实现，并获取一个Server实例
     }
 
     public static Client connect(String url, ChannelHandler... handler) throws RemotingException {
@@ -68,7 +77,7 @@ public class Transporters {
     }
 
     public static Transporter getTransporter() {
-        return ExtensionLoader.getExtensionLoader(Transporter.class).getAdaptiveExtension();
+        return ExtensionLoader.getExtensionLoader(Transporter.class).getAdaptiveExtension();//默认的传输层实现是netty
     }
 
     static {

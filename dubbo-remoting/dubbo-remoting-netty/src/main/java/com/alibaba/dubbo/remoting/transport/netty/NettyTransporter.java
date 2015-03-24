@@ -24,6 +24,7 @@ import com.alibaba.dubbo.remoting.Transporter;
 
 /**
  * @author ding.lid
+ * dubbo默认的传输层实现
  */
 public class NettyTransporter implements Transporter {
 
